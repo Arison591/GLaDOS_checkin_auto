@@ -4,7 +4,7 @@ import sys
 
 import requests
 
-BASE_URL = "https://glados.rocks"
+BASE_URL = os.environ.get("GLADOS_BASE_URL", "https://glados.rocks").rstrip("/")
 TIMEOUT = 30
 
 
