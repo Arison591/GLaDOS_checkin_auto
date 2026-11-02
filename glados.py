@@ -2,11 +2,16 @@
 import os
 import re
 import sys
+from urllib.parse import urlsplit
 
 import requests
 
 BASE_URL = os.environ.get("GLADOS_BASE_URL", "https://glados.rocks").rstrip("/")
 TIMEOUT = 30
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+)
 
 
 def normalize_cookie(value):
@@ -20,12 +25,12 @@ def checkin(cookie, number):
         "cookie": cookie,
         "referer": BASE_URL + "/console/checkin",
         "origin": BASE_URL,
-        "user-agent": "Mozilla/5.0",
+        "user-agent": os.environ.get("GLADOS_USER_AGENT", "").strip() or DEFAULT_USER_AGENT,
     }
     try:
         response = requests.post(
             BASE_URL + "/api/user/checkin", headers=headers,
-            json={"token": "glados.one"}, timeout=TIMEOUT,
+            json={"token": urlsplit(BASE_URL).hostname}, timeout=TIMEOUT,
         )
         response.raise_for_status()
         result = response.json()

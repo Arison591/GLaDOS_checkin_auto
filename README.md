@@ -8,6 +8,7 @@
 - 可在 Actions → GLaDOS 每日签到 → Run workflow 手动执行。
 - Cookie 只保存在仓库的 Actions secret 中，不写入代码。
 - 当前账号使用 `glados.cloud`，已在仓库 Actions variable `GLADOS_BASE_URL` 中设为 `https://glados.cloud`。如果更换登录站点，请同步修改这个变量并重新获取对应站点的 Cookie。
+- 请求使用 Windows Chrome 浏览器标识。如果以后改用其他设备登录，可在 Actions variable `GLADOS_USER_AGENT` 中填入登录浏览器的完整 User-Agent。
 - 多个账号的 Cookie 使用 `&` 分隔。
 - `PUSHPLUS_TOKEN` 为可选通知配置，不填写也能签到。
 - 签到失败、Cookie 失效或网络异常时，任务会显示失败。

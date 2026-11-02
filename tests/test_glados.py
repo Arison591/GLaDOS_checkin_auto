@@ -23,6 +23,8 @@ class CheckinTests(unittest.TestCase):
             with patch.object(glados.requests, 'get', return_value=self.response(status)):
                 outcome = glados.checkin('sensitive-test-cookie', 1)
                 self.assertEqual(post.call_args.kwargs['timeout'], 30)
+                self.assertEqual(post.call_args.kwargs['json']['token'], 'glados.cloud')
+                self.assertIn('Windows NT', post.call_args.kwargs['headers']['user-agent'])
                 return outcome
 
     def test_success(self):
