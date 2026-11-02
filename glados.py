@@ -45,9 +45,12 @@ def checkin(cookie, number):
             return False, f"账号 {number}：签到失败，请检查 Cookie 或登录网站查看"
         days = str(data["leftDays"]).split(".")[0]
         return True, f"账号 {number}：{message}；剩余 {days} 天"
-    except requests.RequestException:
+    except requests.RequestException as error:
         # Never print request objects or headers, which contain the cookie.
-        return False, f"账号 {number}：网络请求失败，请检查连接或 Cookie"
+        detail = type(error).__name__
+        if error.response is not None:
+            detail += f" / HTTP {error.response.status_code}"
+        return False, f"账号 {number}：请求失败（{detail}），请检查连接或 Cookie 格式"
     except (ValueError, TypeError):
         return False, f"账号 {number}：接口未返回有效 JSON，请稍后重试"
 
