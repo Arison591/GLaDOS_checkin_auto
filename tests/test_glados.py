@@ -9,6 +9,10 @@ import glados
 
 
 class CheckinTests(unittest.TestCase):
+    def test_normalize_copied_cookie(self):
+        self.assertEqual(glados.normalize_cookie('Cookie: gld:sess=a;\r\n gld:sess.sig=b'), 'gld:sess=a; gld:sess.sig=b')
+        self.assertEqual(glados.normalize_cookie('cookie\ngld:sess=a'), 'gld:sess=a')
+
     def response(self, payload):
         result = Mock()
         result.json.return_value = payload

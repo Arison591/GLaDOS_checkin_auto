@@ -1,11 +1,18 @@
 """GLaDOS check-in shared by GitHub Actions and local runs."""
 import os
+import re
 import sys
 
 import requests
 
 BASE_URL = os.environ.get("GLADOS_BASE_URL", "https://glados.rocks").rstrip("/")
 TIMEOUT = 30
+
+
+def normalize_cookie(value):
+    value = value.strip()
+    value = re.sub(r"^cookie(?:\s*:\s*|\s*\r?\n\s*)", "", value, flags=re.IGNORECASE)
+    return value.replace("\r", "").replace("\n", "").strip()
 
 
 def checkin(cookie, number):
@@ -56,7 +63,7 @@ def checkin(cookie, number):
 
 
 def main():
-    cookies = [part.strip() for part in os.environ.get("GLADOS_COOKIE", "").split("&") if part.strip()]
+    cookies = [normalize_cookie(part) for part in os.environ.get("GLADOS_COOKIE", "").split("&") if part.strip()]
     if not cookies:
         print("未配置 GLADOS_COOKIE，请在 GitHub 仓库的 Actions secrets 中添加。")
         return 1
