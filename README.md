@@ -1,28 +1,48 @@
-# GLaDOS 自动签到，实现无限白嫖
+# GLaDOS 自动签到
 
-原仓库地址：https://github.com/lukesyy/glados_automation
+基于 https://github.com/domeniczz/GLaDOS_checkin_auto 配置的 GitHub Actions 每日签到。
 
-复制了一个仓库，进行了些修改，防止原仓库被封
+## 当前配置
 
-环境变量：`GLADOS_COOKIE`（必要） 和 `PUSHPLUS_TOKEN`（非必要）
+- 每天北京时间 09:30（UTC 01:30）运行。GitHub 调度可能延迟。
+- 可在 Actions → GLaDOS 每日签到 → Run workflow 手动执行。
+- Cookie 只保存在仓库的 Actions secret 中，不写入代码。
+- 多个账号的 Cookie 使用 `&` 分隔。
+- `PUSHPLUS_TOKEN` 为可选通知配置，不填写也能签到。
+- 签到失败、Cookie 失效或网络异常时，任务会显示失败。
 
-`GLADOS_COOKIE`多个账号需使用 '&' 隔开，示例：cookie&cookie
+## 添加或更新 Cookie
 
+1. 登录 https://glados.rocks/console/checkin 。
+2. 按 F12 打开开发者工具，选择 Network（网络），刷新网页。
+3. 选择发往 `glados.rocks/api/user/status` 的请求。
+4. 在 Headers → Request Headers 中复制 `Cookie` 的完整值，不包含 `Cookie:`。
+5. 打开本仓库 Settings → Secrets and variables → Actions。
+6. 新增或更新名为 `GLADOS_COOKIE` 的 Repository secret，粘贴 Cookie。
+7. 在 Actions 页面手动运行一次，查看“执行签到”的日志。
 
+Cookie 过期后需要重复以上步骤。不要把 Cookie 提交到仓库、Issue 或日志中。
 
-# Github Actions
+## GitHub 调度说明
 
-1. 点击右上角 **fork** 按钮
-2. 在自己仓库中打开此项目
-3. 将 `runGladosAction.yml` 放入 `.github/workflows` 文件夹下
-4. 配置环境变量
-5. 点亮右上角的星星 **star** 激活 actions
-6. 然后点击 Actions 标签查看运行的详细状况
+公开仓库连续 60 天没有活动时，GitHub 可能自动停用定时工作流。
+如发生停用，请在 Actions 页面重新启用，并手动运行一次。
+原项目的第三方 keepalive 组件已被 GitHub 禁用，本配置已移除该依赖。
 
-![image](https://user-images.githubusercontent.com/70319988/231369203-c812910a-963d-45b8-98a5-95b2623c25d7.png)
-![image](https://user-images.githubusercontent.com/70319988/199923789-639e8295-b03e-4abd-858e-ff427015512a.png)
-![image](https://user-images.githubusercontent.com/70319988/199923884-d81dd457-ecc5-4de9-b480-191d25217c47.png)
+## 本地运行
 
- # 青龙面板
+需要 Python 3.10 或更新版本。安装依赖后，通过环境变量提供 Cookie：
 
-直接把 glados_Qinglong.py 文件放到青龙里，环境变量同上
+```powershell
+python -m pip install -r requirements.txt
+# 在当前进程中设置 GLADOS_COOKIE，然后运行：
+python glados.py
+```
+
+## 验证
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+青龙用户仍可使用原版的独立脚本 `glados_Qinglong.py`。

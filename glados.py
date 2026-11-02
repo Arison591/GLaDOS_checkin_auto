@@ -1,42 +1,90 @@
-import requests,json,os
-# -------------------------------------------------------------------------------------------
-# github workflows
-# -------------------------------------------------------------------------------------------
-if __name__ == '__main__':
-# pushplus秘钥 申请地址 http://www.pushplus.plus
-    sckey = os.environ.get("PUSHPLUS_TOKEN", "")
-# 推送内容
-    sendContent = ''
-# glados账号cookie 直接使用数组 如果使用环境变量需要字符串分割一下
-    cookies = os.environ.get("GLADOS_COOKIE", []).split("&")
-    if cookies[0] == "":
-        print('未获取到COOKIE变量') 
-        cookies = []
-        exit(0)
-    url= "https://glados.rocks/api/user/checkin"
-    url2= "https://glados.rocks/api/user/status"
-    referer = 'https://glados.rocks/console/checkin'
-    origin = "https://glados.rocks"
-    useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
-    payload={
-        'token': 'glados.one'
+"""GLaDOS check-in shared by GitHub Actions and local runs."""
+import os
+import sys
+
+import requests
+
+BASE_URL = "https://glados.rocks"
+TIMEOUT = 30
+
+
+def checkin(cookie, number):
+    headers = {
+        "cookie": cookie,
+        "referer": BASE_URL + "/console/checkin",
+        "origin": BASE_URL,
+        "user-agent": "Mozilla/5.0",
     }
-    for cookie in cookies:
-        checkin = requests.post(url,headers={'cookie': cookie ,'referer': referer,'origin':origin,'user-agent':useragent,'content-type':'application/json;charset=UTF-8'},data=json.dumps(payload))
-        state =  requests.get(url2,headers={'cookie': cookie ,'referer': referer,'origin':origin,'user-agent':useragent})
-    #--------------------------------------------------------------------------------------------------------#  
-        time = state.json()['data']['leftDays']
-        time = time.split('.')[0]
-        email = state.json()['data']['email']
-        if 'message' in checkin.text:
-            mess = checkin.json()['message']
-            print(email+'----结果--'+mess+'----剩余('+time+')天')  # 日志输出
-            sendContent += email+'----'+mess+'----剩余('+time+')天\n'
-        else:
-            requests.get('http://www.pushplus.plus/send?token=' + sckey + '&content='+email+'cookie已失效')
-            print('cookie已失效')  # 日志输出
-     #--------------------------------------------------------------------------------------------------------#   
-    if sckey != "":
-         requests.get('http://www.pushplus.plus/send?token=' + sckey + '&title='+email+'签到成功'+'&content='+sendContent)
+    try:
+        response = requests.post(
+            BASE_URL + "/api/user/checkin", headers=headers,
+            json={"token": "glados.one"}, timeout=TIMEOUT,
+        )
+        response.raise_for_status()
+        result = response.json()
+        response = requests.get(
+            BASE_URL + "/api/user/status", headers=headers, timeout=TIMEOUT
+        )
+        response.raise_for_status()
+        status = response.json()
+        if not isinstance(result, dict) or not isinstance(status, dict):
+            return False, f"账号 {number}：接口响应格式异常"
+        data = status.get("data")
+        if status.get("code") != 0 or not isinstance(data, dict) or "leftDays" not in data:
+            return False, f"账号 {number}：无法读取账户状态，请检查或更新 GLADOS_COOKIE"
+        message = str(result.get("message", "未返回签到结果"))
+        # Code 1 can also mean an expired login: require an explicit duplicate message.
+        already_checked = result.get("code") == 1 and (
+            "checkin! Tomorrow" in message
+            or "already checked in" in message.lower()
+            or "checkin repeats" in message.lower()
+            or "已经签到" in message
+            or "已签到" in message
+        )
+        if result.get("code") != 0 and not already_checked:
+            return False, f"账号 {number}：签到失败，请检查 Cookie 或登录网站查看"
+        days = str(data["leftDays"]).split(".")[0]
+        return True, f"账号 {number}：{message}；剩余 {days} 天"
+    except requests.RequestException:
+        # Never print request objects or headers, which contain the cookie.
+        return False, f"账号 {number}：网络请求失败，请检查连接或 Cookie"
+    except (ValueError, TypeError):
+        return False, f"账号 {number}：接口未返回有效 JSON，请稍后重试"
 
 
+def main():
+    cookies = [part.strip() for part in os.environ.get("GLADOS_COOKIE", "").split("&") if part.strip()]
+    if not cookies:
+        print("未配置 GLADOS_COOKIE，请在 GitHub 仓库的 Actions secrets 中添加。")
+        return 1
+    messages = []
+    success = True
+    for number, cookie in enumerate(cookies, 1):
+        ok, message = checkin(cookie, number)
+        print(message)
+        messages.append(message)
+        success = success and ok
+    token = os.environ.get("PUSHPLUS_TOKEN", "").strip()
+    if token:
+        try:
+            response = requests.post(
+                "https://www.pushplus.plus/send",
+                json={
+                    "token": token,
+                    "title": "GLaDOS 签到结果" if success else "GLaDOS 签到异常",
+                    "content": "\n".join(messages),
+                    "template": "txt",
+                }, timeout=TIMEOUT,
+            )
+            response.raise_for_status()
+            if response.json().get("code") != 200:
+                print("PushPlus 通知发送失败，请检查 PUSHPLUS_TOKEN。")
+                success = False
+        except (requests.RequestException, ValueError, AttributeError):
+            print("PushPlus 通知发送失败，请检查网络和 PUSHPLUS_TOKEN。")
+            success = False
+    return 0 if success else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
