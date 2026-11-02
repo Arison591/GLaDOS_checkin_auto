@@ -18,6 +18,7 @@ class CheckinTests(unittest.TestCase):
         result.json.return_value = payload
         return result
 
+    @patch.object(glados, 'BASE_URL', 'https://glados.cloud')
     def run_account(self, result, status):
         with patch.object(glados.requests, 'post', return_value=self.response(result)) as post:
             with patch.object(glados.requests, 'get', return_value=self.response(status)):
