@@ -49,7 +49,8 @@ def checkin(cookie, number):
             or "已签到" in message
         )
         if result.get("code") != 0 and not already_checked:
-            return False, f"账号 {number}：签到失败，请检查 Cookie 或登录网站查看"
+            safe_message = message.replace(cookie, "[redacted]").replace("\r", " ").replace("\n", " ")[:200]
+            return False, f"账号 {number}：签到未成功（code={result.get('code')}）：{safe_message}"
         days = str(data["leftDays"]).split(".")[0]
         return True, f"账号 {number}：{message}；剩余 {days} 天"
     except requests.RequestException as error:
